@@ -3,7 +3,7 @@
 """
 import asyncio
 from aiogram import types
-from aiogram.utils.exceptions import TelegramAPIError, Unauthorized
+from aiogram.utils.exceptions import TelegramAPIError, Unauthorized, RetryAfter
 from aiogram import Bot as AioBot
 from olgram.models.models import Bot
 from server.server import unregister_token
@@ -90,6 +90,18 @@ async def select_chat(bot: Bot, call: types.CallbackQuery, chat: str):
     await call.answer(_("Выбран чат {0}").format(chat_obj.name))
 
 
+async def send_message(bot: AioBot, telegram_id: int, text: str) -> bool:
+    try:
+        await bot.send_message(telegram_id, text, parse_mode="HTML")
+    except RetryAfter as e:
+        await asyncio.sleep(e.timeout)
+        return await send_message(bot, telegram_id, text)
+    except TelegramAPIError:
+        return False
+    else:
+        return True
+
+
 async def start_broadcast(bot: Bot, call: types.CallbackQuery, text: Optional[str]):
     if not text:
         return await call.answer(_("Отправьте текст для рассылки"))
@@ -104,13 +116,9 @@ async def start_broadcast(bot: Bot, call: types.CallbackQuery, text: Optional[st
     await call.answer(_("Рассылка начата"))
     try:
         for telegram_id in set(user_chat_ids):
-            try:
-                if await a_bot.send_message(telegram_id, text, parse_mode="HTML"):
-                    count += 1
-            except Unauthorized:
-                continue
-            else:
-                await asyncio.sleep(0.05)  # 20 messages per second (Limit: 30 messages per second)
+            if await send_message(a_bot, telegram_id, text):
+                count += 1
+            await asyncio.sleep(0.05)  # 20 messages per second (Limit: 30 messages per second)
     finally:
         await call.bot.send_message(call.from_user.id, _("Рассылка закончена. Сообщений отправлено: {0}").format(count))
         await a_bot.session.close()
