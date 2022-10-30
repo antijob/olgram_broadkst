@@ -1,8 +1,9 @@
+from datetime import timedelta
 from tortoise.models import Model
 from tortoise import fields
 from uuid import uuid4
 from textwrap import dedent
-from olgram.settings import DatabaseSettings
+from olgram.settings import ServerSettings, DatabaseSettings
 from locales.locale import _
 
 
@@ -46,10 +47,14 @@ class Bot(Model):
     enable_additional_info = fields.BooleanField(default=False)
     enable_olgram_text = fields.BooleanField(default=True)
     enable_antiflood = fields.BooleanField(default=False)
+    enable_timeout = fields.BooleanField(default=True)
 
     def decrypted_token(self):
         cryptor = DatabaseSettings.cryptor()
         return cryptor.decrypt(self.token)
+
+    def timeout_ms(self) -> int:
+        return ServerSettings.redis_timeout_ms() if self.enable_timeout else 0
 
     @classmethod
     def encrypted_token(cls, token: str):

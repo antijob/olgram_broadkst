@@ -177,6 +177,11 @@ async def send_bot_settings_menu(bot: Bot, call: types.CallbackQuery):
                                    callback_data=menu_callback.new(level=3, bot_id=bot.id, operation="antiflood",
                                                                    chat=empty))
     )
+    keyboard.insert(
+        types.InlineKeyboardButton(text=_("Истечение чатов"),
+                                   callback_data=menu_callback.new(level=3, bot_id=bot.id, operation="timeout",
+                                                                   chat=empty))
+    )
     is_promo = await bot.is_promo()
     if is_promo:
         keyboard.insert(
@@ -194,11 +199,13 @@ async def send_bot_settings_menu(bot: Bot, call: types.CallbackQuery):
     thread_turn = _("включены") if bot.enable_threads else _("выключены")
     info_turn = _("включены") if bot.enable_additional_info else _("выключены")
     antiflood_turn = _("включен") if bot.enable_antiflood else _("выключен")
+    timeout_turn = _("включено") if bot.enable_timeout else _("выключено")
     text = dedent(_("""
     <a href="https://olgram.readthedocs.io/ru/latest/options.html#threads">Потоки сообщений</a>: <b>{0}</b>
     <a href="https://olgram.readthedocs.io/ru/latest/options.html#user-info">Данные пользователя</a>: <b>{1}</b>
     <a href="https://olgram.readthedocs.io/ru/latest/options.html#antiflood">Антифлуд</a>: <b>{2}</b>
-    """)).format(thread_turn, info_turn, antiflood_turn)
+    Истечение чатов: <b>{3}</b>
+    """)).format(thread_turn, info_turn, antiflood_turn, timeout_turn)
 
     if is_promo:
         olgram_turn = _("включена") if bot.enable_olgram_text else _("выключена")
@@ -497,6 +504,9 @@ async def callback(call: types.CallbackQuery, callback_data: dict, state: FSMCon
             return await send_bot_settings_menu(bot, call)
         if operation == "additional_info":
             await bot_actions.additional_info(bot, call)
+            return await send_bot_settings_menu(bot, call)
+        if operation == "timeout":
+            await bot_actions.timeout(bot, call)
             return await send_bot_settings_menu(bot, call)
         if operation == "olgram_text":
             await bot_actions.olgram_text(bot, call)

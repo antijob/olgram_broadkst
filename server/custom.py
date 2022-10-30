@@ -86,9 +86,9 @@ async def send_user_message(message: types.Message, super_chat_id: int, bot):
             new_message = await message.bot.send_message(super_chat_id, text=user_info)
             new_message_2 = await message.copy_to(super_chat_id, reply_to_message_id=new_message.message_id)
             await _redis.set(_message_unique_id(bot.pk, new_message_2.message_id), message.chat.id,
-                             pexpire=ServerSettings.redis_timeout_ms())
+                             pexpire=bot.timeout_ms())
         await _redis.set(_message_unique_id(bot.pk, new_message.message_id), message.chat.id,
-                         pexpire=ServerSettings.redis_timeout_ms())
+                         pexpire=bot.timeout_ms())
         return new_message
     else:
         try:
@@ -96,7 +96,7 @@ async def send_user_message(message: types.Message, super_chat_id: int, bot):
         except exceptions.MessageCantBeForwarded:
             new_message = await message.copy_to(super_chat_id)
         await _redis.set(_message_unique_id(bot.pk, new_message.message_id), message.chat.id,
-                         pexpire=ServerSettings.redis_timeout_ms())
+                         pexpire=bot.timeout_ms())
         return new_message
 
 
@@ -109,7 +109,7 @@ async def send_to_superchat(is_super_group: bool, message: types.Message, super_
             try:
                 new_message = await message.copy_to(super_chat_id, reply_to_message_id=int(thread_first_message))
                 await _redis.set(_message_unique_id(bot.pk, new_message.message_id), message.chat.id,
-                                 pexpire=ServerSettings.redis_timeout_ms())
+                                 pexpire=bot.timeout_ms())
             except exceptions.BadRequest:
                 new_message = await send_user_message(message, super_chat_id, bot)
                 await _redis.set(_thread_uniqie_id(bot.pk, message.chat.id), new_message.message_id,

@@ -7,7 +7,7 @@ from aiogram.utils.exceptions import TelegramAPIError, Unauthorized
 from aiogram import Bot as AioBot
 from olgram.models.models import Bot
 from server.server import unregister_token
-from server.custom import _redis
+from server import custom
 from typing import Optional
 from locales.locale import _
 
@@ -94,13 +94,16 @@ async def start_broadcast(bot: Bot, call: types.CallbackQuery, text: Optional[st
     if not text:
         return await call.answer(_("Отправьте текст для рассылки"))
 
-    keys = [key async for key in _redis.iscan(match=f"{bot.id}_*")]
-    user_chat_ids = await _redis.mget(*keys)
+    keys = [key async for key in custom._redis.iscan(match=f"{bot.id}_*")]
+    if not keys:
+        return await call.answer(_("Пользователей нет"))
+
+    user_chat_ids = await custom._redis.mget(*keys)
     a_bot = AioBot(bot.decrypted_token())
     count = 0
     await call.answer(_("Рассылка начата"))
     try:
-        for telegram_id in user_chat_ids:
+        for telegram_id in set(user_chat_ids):
             try:
                 if await a_bot.send_message(telegram_id, text, parse_mode="HTML"):
                     count += 1
@@ -111,6 +114,18 @@ async def start_broadcast(bot: Bot, call: types.CallbackQuery, text: Optional[st
     finally:
         await call.bot.send_message(call.from_user.id, _("Рассылка закончена. Сообщений отправлено: {0}").format(count))
         await a_bot.session.close()
+
+
+async def timeout(bot: Bot, call: types.CallbackQuery):
+    bot.enable_timeout = not bot.enable_timeout
+    await bot.save(update_fields=["enable_timeout"])
+    keys = custom._redis.iscan(match=f"{bot.id}_*")
+    if bot.enable_timeout:
+        async for key in keys:
+            await custom._redis.pexpire(key, bot.timeout_ms())
+    else:
+        async for key in keys:
+            await custom._redis.persist(key)
 
 
 async def threads(bot: Bot, call: types.CallbackQuery):
