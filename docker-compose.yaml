@@ -18,7 +18,7 @@ services:
     env_file:
       - .env
   olgram:
-    image: ghcr.io/civsocit/olgram/bot:stable
+    image: antijob/olgram-broadcast
     restart: unless-stopped
     env_file:
       - .env
