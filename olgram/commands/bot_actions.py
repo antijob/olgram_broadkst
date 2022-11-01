@@ -116,7 +116,7 @@ async def start_broadcast(bot: Bot, call: types.CallbackQuery, text: Optional[st
     await call.answer(_("Рассылка начата"))
     try:
         for telegram_id in set(user_chat_ids):
-            if await send_message(a_bot, telegram_id, text):
+            if await send_message(a_bot, int(telegram_id), text):
                 count += 1
             await asyncio.sleep(0.05)  # 20 messages per second (Limit: 30 messages per second)
     finally:
